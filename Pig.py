@@ -1,114 +1,174 @@
-
 import random
-import sys
+import argparse
+
+random.seed(0)
 
 
-class Player():
+# if the dice rolls one
+class ExceptionforOne(Exception):
+    pass
+
+
+# This is the Dice class
+class Die:
+
+    """Classes for the die"""
+
     def __init__(self):
-        self.turn = False
-        self.roll = True
-        self.hold = False
-        self.score = 0
+        self.value = random.randint(1, 6)
 
-    def decide(self):
-        decision = raw_input('%s: Hold (h) or Roll (r)?' % self.name)
-        decision = str(decision)
-        if decision == 'h':
-            self.hold = True
-            self.roll = False
-        elif decision == 'r':
-            self.hold = False
-            self.roll = True
-        else:
-            print('Incorrect Input.  Please enter h or r')
-            self.decide()
+    def roll(self):
 
-class Die():
+        """This Returns the value of rolled dice or exception"""
+        self.value = random.randint(1, 6)
+        if self.value == 1:
+            raise ExceptionforOne
+
+        return self.value
+
+    def __str__(self):
+        return "Rolled " + str(self.value) + "."
+
+
+class Box:
+
+
     def __init__(self):
         self.value = 0
-    def roll(self):
-        self.value = random.randint(1,6)
+
+    def setToZero(self):
+        self.value = 0
+
+    def addValue(self, value_of_dice):
+        self.value += value_of_dice
 
 
-class Game():
-    def __init__(self,player1,player2,die):
-        self.turn_score = 0
-        self.die = die
-        self.player1 = player1
-        self.player2 = player2
-        self.player1.score = 0
-        self.player2.score = 0
-        self.player1.name = "PLAYER 1"
-        self.player2.name = "PLAYER 2"
+class Player(object):
+    """Classes for different player types."""
+
+    def __init__(self, name=None):
+        self.name = name
+        self.score = 0
+
+    def add_score(self, player_score):
+        """This Adds the score to total score."""
+
+        self.score += player_score
+
+    def __str__(self):
+        """This will Return the  players name and current score."""
+
+        return str(self.name) + ": " + str(self.score)
 
 
-        coin_flip = random.randint(1,2)
-        if coin_flip == 1:
-            self.current_player = player1
-            print ("Player 1 has won the Coin Flip, will start first")
-        elif coin_flip == 2:
-            self.current_player = player2
-            print ("Player 2 has won the Coin Flip, will start first")
+class PigGame(Player):
+    def __init__(self, name):
+        super(PigGame, self).__init__(name)
+
+    def keep_rolling(self, box):
+        """Roll and/or hold"""
+
+        human_decision = self.choices("  r - Roll again, h - Hold? ")
+        if human_decision == "r":
+            return True
         else:
-            print ("Coin Flip Error, not heads or tails")
-        self.turn()
+            return False
 
-    def next_turn(self):
-        self.turn_score = 0
-        if self.player1.score >= 100:
-            print ("Player 1 has won the game!")
-            print ("Score:",self.player1.score)
-            self.endgame()
-            startNewGame()
-        elif self.player2.score >= 100:
-            print "Player 2 has won the game!"
-            print "Score:",self.player2.score
-            self.endgame()
-            startNewGame()
-        else:
-            if self.current_player == self.player1:
-                self.current_player = self.player2
-            elif self.current_player == self.player2:
-                self.current_player = self.player1
+    def choices(self, prompt='Please enter a Choice: '):
+        """This will Take the  input from user"""
+
+        while True:
+
+            choice = (input(prompt))
+            if (choice != "r" and choice != "h"):
+                print("Enter a valid choice")
             else:
-                print "Next Turn Error, current_player neither Player 1 or Player 2"
-
-            print "New Turn, player is now:", self.current_player.name
-            self.turn()
-
-    def turn(self):
-       self.die.roll()
+                break
+        return choice
 
 
-        if(self.die.value == 1):
-            print "You Rolled a 1. No Points AWARDED. Next Player Rolls"
-            print"Player 1 Total Game Score:", self.player1.score
-            print"Player 2 Total Game Score:", self.player2.score
-            self.turn_score = 0
-            self.next_turn()
-        else:
-            self.turn_score = self.turn_score + self.die.value
+class Play:
+    def __init__(self, players):
+        """Starts the game by asking names of players"""
 
-            print "You rolled a:",self.die.value
-            print "Current Value is:", self.turn_score
-            print"Player 1 Total Game Score:", self.player1.score
-            print"Player 2 Total Game Score:", self.player2.score
-            self.current_player.decide()
+        self.players = []
 
-            if(self.current_player.hold == True and self.current_player.roll == False):
-                self.current_player.score = self.current_player.score + self.turn_score
-                self.next_turn()
-            elif(self.current_player.hold == False and self.current_player.roll == True):
-                self.turn()
-    def endgame(self):
-        sys.exit()
+        for i in range(players):
+            player_name = input('Player {}, enter your name: '.format(i + 1))
+            self.players.append(PigGame(player_name))
+
+        self.no_of_players = len(self.players)
+
+        self.die = Die()
+        self.box = Box()
+
+    def firstPlayer(self):
+        """Player to begin"""
+        self.current_player = 0 % self.no_of_players
+
+    def nextPlayer(self):
+        """The next player"""
+        self.current_player = (self.current_player + 1) % self.no_of_players
+
+    def previousPlayer(self):
+        """The previous player"""
+        self.current_player = (self.current_player - 1) % self.no_of_players
+
+    def get_all_scores(self):
+        """Returns a join all players scores."""
+
+        return ', '.join(str(player) for player in self.players)
+
+    def startGame(self):
+        """Plays an entire game."""
+
+        self.firstPlayer()
+
+        while all(player.score < 100 for player in self.players):
+            print('\n Current score > {}'.format(self.get_all_scores()))
+            self.box.setToZero()
+
+            input("-------{} Press Enter to Start------  ".format(self.players[self.current_player].name))
+            while self.keep_rolling():
+                pass
+
+            self.players[self.current_player].add_score(self.box.value)
+            self.nextPlayer()
+
+        self.previousPlayer()
+        print(' {} hs won the game. Hurraay!! '.format(self.players[self.current_player].name).center(70, '*'))
+
+    def keep_rolling(self):
+        """ Check if play wants to roll. Set box to zero if dice rolls one"""
+        try:
+            value_of_dice = self.die.roll()
+            self.box.addValue(value_of_dice)
+            print('Last roll: {}, New Turn Total: {}'.format(value_of_dice, self.box.value))
+
+            # do you want to keep rolling?
+            return self.players[self.current_player].keep_rolling(self.box)
+
+        except ExceptionforOne:
+            print('Oops, Rolled a one. Changing Player')
+            self.box.setToZero()
+            return False
 
 
 def main():
-    player1 = Player()
-    player2 = Player()
-    die = Die()
-    Game(player1, player2, die)
+    # Initialize parser
+    commandParser = argparse.ArgumentParser(description="Send a ­­url parameter to the script")
+    # add parameter for file
+    commandParser.add_argument("--numPlayers", type=str, help="Number of players")
+
+    args = commandParser.parse_args()
+    if not args.numPlayers:  # number of players is twwo if parameter not passed
+        no_of_players = 2
+    else:  # else use the number of players passed
+        no_of_players = int(args.numPlayers)
+
+    startGame = Play(no_of_players)
+    startGame.startGame()
+
 
 if __name__ == '__main__':
     main()
